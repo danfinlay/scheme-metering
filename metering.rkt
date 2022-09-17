@@ -48,22 +48,24 @@
 
     ; Per method attenuator:
     (lambda (target cost)
-      (begin
-        (lambda (first . rest)
-          (begin
-            (set! remaining (- remaining cost))
-            (display (string-append "remaining gas " (number->string (+ remaining 1)) "\n"))
-            (if (> remaining -1)
-              (apply target (cons first rest))
-              (error "Exceeded gas limit"))))))))
+      (lambda (first . rest)
+        (begin
+          (set! remaining (- remaining cost))
+          (display (string-append "remaining gas " (number->string (+ remaining 1)) "\n"))
+          (if (> remaining -1
+            (apply target (cons first rest))
+            (error "Exceeded gas limit")))))))
 
 
 (define meter (create-meter 8))
                      
 (define math-env
+   ; Most methods cost 1:
   `((+ . ,(meter + 1))
     (- . ,(meter - 1))
     (* . ,(meter * 1))
+
+    ; Division costs 4:
     (/ . ,(meter / 4))))
 
 
