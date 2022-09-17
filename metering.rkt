@@ -42,30 +42,6 @@
                    (evaluate arg-expr env))
                  arg-exprs)))))
 
-(define (create-metered-method-old target limit)
-  (begin
-    (define remaining limit)
-    (display (string-append "created call limit of " (number->string remaining) "\n"))
-    (lambda (x y)
-      (begin
-        (set! remaining (- remaining 1))
-        (display (string-append "remaining calls " (number->string remaining) "\n"))
-        (if (> remaining 0)
-          (apply target x y)
-          (error "Exceeded addition call limit"))))))
-
-
-(define (create-metered-method target limit)
-  (begin
-    (define remaining limit)
-    (lambda (first . rest)
-      (begin
-        (set! remaining (- remaining 1))
-        (display (string-append "remaining calls " (number->string (+ remaining 1)) "\n"))
-        (if (> remaining -1)
-          (apply target (cons first rest))
-          (error "Exceeded addition call limit"))))))
-
 (define (create-meter limit)
   (begin
     (define remaining limit)
@@ -97,9 +73,7 @@
                 math-env)
 (evaluate '(* 2 3)
                 math-env)
-
 (evaluate '(/ 2 3)
                 math-env)
-
 (evaluate '(/ 2 3)
                 math-env)
