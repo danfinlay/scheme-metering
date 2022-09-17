@@ -54,6 +54,7 @@
           (apply target x y)
           (error "Exceeded addition call limit"))))))
 
+
 (define (create-metered-method target limit)
   (begin
     (define remaining limit)
@@ -65,20 +66,37 @@
           (apply target (cons first rest))
           (error "Exceeded addition call limit"))))))
 
-                             
-(define metered-add (create-metered-method + 2))
+(define (create-meter limit)
+  (begin
+    (define remaining limit)
+
+    ; Per method attenuator:
+    (lambda (target)
+      (begin
+        (lambda (first . rest)
+          (begin
+            (set! remaining (- remaining 1))
+            (display (string-append "remaining calls " (number->string (+ remaining 1)) "\n"))
+            (if (> remaining -1)
+              (apply target (cons first rest))
+              (error "Exceeded addition call limit"))))))))
+
+
+(define meter (create-meter 2))
+(define metered-add (meter +))
                      
 
 (define math-env
-  `((+ . ,metered-add)
-    (- . ,-)
-    (* . ,*)
-    (/ . ,/)))
+  `((+ . ,(meter +))
+    (- . ,(meter -))
+    (* . ,(meter *))
+    (/ . ,(meter /))))
 
-(metered-add 1 2)
-(metered-add 2 3)
 
 (evaluate '(+ 1 2)
                 math-env)
-(evaluate '(+ 2 3)
+(evaluate '(- 2 3)
+                math-env)
+
+(evaluate '(/ 2 3)
                 math-env)
