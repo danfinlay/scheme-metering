@@ -71,31 +71,34 @@
     (define remaining limit)
 
     ; Per method attenuator:
-    (lambda (target)
+    (lambda (target cost)
       (begin
         (lambda (first . rest)
           (begin
-            (set! remaining (- remaining 1))
-            (display (string-append "remaining calls " (number->string (+ remaining 1)) "\n"))
+            (set! remaining (- remaining cost))
+            (display (string-append "remaining gas " (number->string (+ remaining 1)) "\n"))
             (if (> remaining -1)
               (apply target (cons first rest))
-              (error "Exceeded addition call limit"))))))))
+              (error "Exceeded gas limit"))))))))
 
 
-(define meter (create-meter 2))
-(define metered-add (meter +))
+(define meter (create-meter 8))
                      
-
 (define math-env
-  `((+ . ,(meter +))
-    (- . ,(meter -))
-    (* . ,(meter *))
-    (/ . ,(meter /))))
+  `((+ . ,(meter + 1))
+    (- . ,(meter - 1))
+    (* . ,(meter * 1))
+    (/ . ,(meter / 4))))
 
 
 (evaluate '(+ 1 2)
                 math-env)
 (evaluate '(- 2 3)
+                math-env)
+(evaluate '(* 2 3)
+                math-env)
+
+(evaluate '(/ 2 3)
                 math-env)
 
 (evaluate '(/ 2 3)
