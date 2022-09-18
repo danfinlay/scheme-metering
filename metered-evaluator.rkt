@@ -16,38 +16,34 @@
             (extend-env env (cdr names) (cdr vals)))))
 
 
-(define (evaluate expr env limit)
+(define (evaluate expr env gas)
   (begin
-    (if (< limit 1) (error "Gas limit exceeded") '())
-  (match expr
-    ;; Support builtin types
-    ((or #t #f (? number?))
-     expr)
-    ;; Quoting
-    (`(quote ,quoted-expr)
-     quoted-expr)
-    ;; Variable lookup
-    ((? symbol? name)
-     (env-lookup env name))
-    ;; Conditionals
-    (`(if ,test ,consequent ,alternate)
-     (if (evaluate test env (- limit 1))
-         (evaluate consequent env (- limit 1))
-         (evaluate alternate env (- limit 1))))
-    ;; Lambdas (Procedures)
-    (`(lambda ,(cons arg args) ,body)
-     (lambda (vals ...)
-       (evaluate body (extend-env env (cons arg args) vals) (- limit 1))))
-    ;; Procedure Invocation (Application)
-    ((cons proc-expr arg-exprs)
-     (apply (evaluate proc-expr env (- limit 1))
-            (map (lambda (arg-expr)
-                   (evaluate arg-expr env (- limit 1)))
-                 arg-exprs))))))
-
-(define (create-metered-evaluator limit)
-  (lambda (expr env)
-    (evaluate expr env limit)))
+    (gas 1)
+    (match expr
+      ;; Support builtin types
+      ((or #t #f (? number?))
+       expr)
+      ;; Quoting
+      (`(quote ,quoted-expr)
+       quoted-expr)
+      ;; Variable lookup
+      ((? symbol? name)
+       (env-lookup env name))
+      ;; Conditionals
+      (`(if ,test ,consequent ,alternate)
+       (if (evaluate test env gas)
+           (evaluate consequent env gas)
+           (evaluate alternate env gas)))
+      ;; Lambdas (Procedures)
+      (`(lambda ,(cons arg args) ,body)
+       (lambda (vals ...)
+         (evaluate body (extend-env env (cons arg args) vals) gas)))
+      ;; Procedure Invocation (Application)
+      ((cons proc-expr arg-exprs)
+       (apply (evaluate proc-expr env gas)
+              (map (lambda (arg-expr)
+                     (evaluate arg-expr env gas))
+                   arg-exprs))))))
                      
 (define math-env
   `((+ . ,+)
@@ -55,14 +51,26 @@
     (* . ,*)
     (/ . ,/)))
 
+(define (create-gas-allowance limit)
+  (begin
+    (define remaining limit)
+    (lambda (charge)
+      (begin
+        (if (> 1 remaining) (error "Gas limit exceeded") '())
+        (set! remaining (- remaining charge))))))
+
 (evaluate '(+ 1 2)
-                math-env 10)
+                math-env (create-gas-allowance 10))
 (evaluate '(- 2 3)
-                math-env 10)
+                math-env (create-gas-allowance 10))
 (evaluate '(* 2 3)
-                math-env 10)
+                math-env (create-gas-allowance 10))
 (evaluate '(/ 2 3)
-                math-env 10)
+                math-env (create-gas-allowance 10))
 (evaluate '(/ 2 3)
-                math-env 10)
-; Error: Exceeded gas limit
+                math-env (create-gas-allowance 10))
+
+(display "big evaluation")
+(evaluate '(/ 2 3 (+ 4 5 (- 1 5)))
+                math-env (create-gas-allowance 10))
+; Error: Gas limit exceeded
